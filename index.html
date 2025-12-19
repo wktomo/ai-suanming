@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>天演 · 命理中枢</title>
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --gold-dim: #5c4d28;
+            --gold-bright: #d4af37;
+            --text-white: #e0e0e0;
+        }
+
+        /* --- 核心防窥 CSS --- */
+        body {
+            -webkit-user-select: none; /* Chrome/Safari */
+            -moz-user-select: none;    /* Firefox */
+            -ms-user-select: none;     /* IE10+ */
+            user-select: none;         /* 标准语法 */
+            -webkit-touch-callout: none; /* iOS Safari */
+        }
+        /* ------------------ */
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg-deep);
+            color: var(--text-white);
+            font-family: 'Noto Serif SC', 'SimSun', serif;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #voidCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.6;
+            pointer-events: none; /* 穿透点击 */
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
+        }
+
+        .compass-group {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        .layer {
+            position: absolute;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+            transition: transform 0.1s linear;
+        }
+
+        .layer-1 {
+            width: 580px; height: 580px;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            opacity: 0.3;
+        }
+        
+        .layer-2 {
+            width: 460px; height: 460px;
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            background: rgba(10, 10, 10, 0.5);
+            font-size: 12px;
+            color: var(--gold-dim);
+        }
+
+        .layer-3 {
+            width: 340px; height: 340px;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            border: 2px solid var(--gold-dim);
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.1), inset 0 0 50px rgba(0,0,0,0.9);
+            z-index: 5;
+        }
+
+        .gua-cell {
+            position: absolute;
+            top: 0; left: 50%;
+            width: 40px; height: 50%;
+            transform-origin: bottom center;
+            text-align: center;
+            padding-top: 15px;
+            pointer-events: none;
+        }
+
+        .gua-icon {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-white);
+            text-shadow: 0 0 5px rgba(255,255,255,0.3);
+            transition: color 0.3s;
+        }
+        
+        .gua-name {
+            font-size: 16px;
+            color: var(--gold-dim);
+            font-weight: bold;
+            transition: color 0.3s, text-shadow 0.3s;
+        }
+
+        .gua-cell.active .gua-icon { color: var(--gold-bright); text-shadow: 0 0 15px var(--gold-bright); }
+        .gua-cell.active .gua-name { color: #fff; text-shadow: 0 0 10px var(--gold-bright); }
+
+        .taiji-btn {
+            position: absolute;
+            width: 110px; height: 110px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ddd 50%, #111 50%);
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.2);
+            z-index: 20;
+            cursor: pointer;
+            transition: all 0.5s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .taiji-btn::before {
+            content: ''; position: absolute; top: 15px; width: 20px; height: 20px;
+            background: #111; border-radius: 50%; left: 50%; transform: translateX(-50%); border: 2px solid #333;
+        }
+        .taiji-btn::after {
+            content: ''; position: absolute; bottom: 15px; width: 20px; height: 20px;
+            background: #ddd; border-radius: 50%; left: 50%; transform: translateX(-50%); border: 2px solid #fff;
+        }
+
+        .taiji-btn:active { transform: scale(0.95); box-shadow: 0 0 10px rgba(212,175,55,0.1); }
+        .taiji-btn.charging { animation: pulseCharge 0.5s infinite alternate; box-shadow: 0 0 60px var(--gold-bright); }
+
+        @keyframes pulseCharge { from { transform: scale(1); } to { transform: scale(1.05); } }
+
+        .indicator {
+            position: absolute;
+            top: -30px;
+            width: 2px; height: 40px;
+            background: linear-gradient(to bottom, transparent, var(--gold-bright));
+            z-index: 30;
+        }
+        .indicator::after {
+            content: '▼'; color: var(--gold-bright); position: absolute; bottom: -15px; left: -6px;
+            text-shadow: 0 0 10px var(--gold-bright); font-size: 14px;
+        }
+
+        .interaction-panel {
+            position: absolute;
+            bottom: 40px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            z-index: 50;
+        }
+
+        .input-box {
+            background: rgba(0,0,0,0.6);
+            border: 1px solid var(--gold-dim);
+            color: var(--gold-bright);
+            padding: 12px 20px;
+            width: 300px;
+            text-align: center;
+            font-family: inherit;
+            font-size: 16px;
+            border-radius: 4px;
+            backdrop-filter: blur(5px);
+            outline: none;
+            transition: all 0.3s;
+            user-select: text; /* 允许输入框内选择文字 */
+        }
+        .input-box:focus { border-color: var(--gold-bright); box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
+        .input-box::placeholder { color: rgba(212, 175, 55, 0.4); font-style: italic; }
+
+        .hint-text {
+            font-size: 12px;
+            color: #666;
+            letter-spacing: 2px;
+            opacity: 0;
+            animation: fadeIn 2s forwards 1s;
+        }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+
+        .scroll-paper {
+            width: 400px;
+            max-height: 80vh;
+            background: #fffbf0;
+            color: #2b2b2b;
+            padding: 40px;
+            position: relative;
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            border-top: 10px solid #333;
+            border-bottom: 10px solid #333;
+            overflow-y: auto;
+            text-align: center;
+            user-select: text; /* 允许结果选择复制，如果不想让别人复制结果，改成 none */
+        }
+        
+        .modal-overlay.active .scroll-paper { transform: translateY(0) scale(1); }
+
+        .result-seal {
+            width: 80px; height: 80px;
+            border: 3px solid #b22222;
+            color: #b22222;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            margin: 0 auto 20px auto;
+            border-radius: 4px;
+            transform: rotate(-10deg);
+            opacity: 0;
+        }
+        .modal-overlay.active .result-seal { animation: stamp 0.3s forwards 0.5s; }
+
+        @keyframes stamp { from { opacity: 0; transform: scale(2) rotate(-10deg); } to { opacity: 1; transform: scale(1) rotate(-10deg); } }
+
+        .close-btn {
+            margin-top: 30px;
+            background: transparent;
+            border: 1px solid #333;
+            padding: 8px 30px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.3s;
+        }
+        .close-btn:hover { background: #333; color: #fff; }
+
+        @media (max-width: 600px) {
+            .compass-group { transform: scale(0.65); }
+            .interaction-panel { bottom: 80px; }
+            .scroll-paper { width: 90%; }
+        }
+    </style>
+    <script>
+        // 1. 禁用右键菜单
+        document.oncontextmenu = function() { return false; };
+
+        // 2. 禁用常见的开发者工具快捷键
+        document.onkeydown = function(e) {
+            if (e.keyCode == 123) return false; // F12
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) return false; // Ctrl+Shift+I
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) return false; // Ctrl+Shift+C
+            if (e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) return false; // Ctrl+Shift+J
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false; // Ctrl+U (查看源码)
+        };
+
+        // 3. 简单的调试器干扰 (如果打开控制台，页面可能会卡顿或停止)
+        // 注意：这可能会影响部分合法用户，请酌情使用。这里使用轻量级检测。
+        (function() {
+            var re = /x/;
+            var i = 0;
+            console.log(re); // 触发某些浏览器的检查
+        })();
+        
+        // 更激进的防调试（可选，去掉注释启用，会让打开控制台的人页面卡死）
+        /*
+        setInterval(function() {
+            debugger;
+        }, 100);
+        */
+    </script>
+</head>
+<body>
+
+    <canvas id="voidCanvas"></canvas>
+
+    <div class="container">
+        <div class="compass-group">
+            <div class="indicator"></div>
+            <div class="layer layer-1" id="layer1"></div>
+            <div class="layer layer-2" id="layer2"></div>
+            <div class="layer layer-3" id="layer3"></div>
+            <div class="taiji-btn" id="taijiBtn"></div>
+        </div>
+
+        <div class="interaction-panel" id="inputPanel">
+            <input type="text" class="input-box" id="question" placeholder="在此输入心中所惑..." autocomplete="off">
+            <div class="hint-text">长按太极 · 注入意念</div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="resultModal">
+        <div class="scroll-paper">
+            <div class="result-seal" id="resSeal">上吉</div>
+            <h2 id="resTitle" style="margin-bottom: 10px; font-size: 28px;">潜龙勿用</h2>
+            <div style="width: 30px; height: 2px; background: #b22222; margin: 10px auto;"></div>
+            <p id="resPoem" style="font-style: italic; color: #555; margin-bottom: 20px;">"诗句内容在此"</p>
+            
+            <div style="text-align: left; font-size: 15px; line-height: 1.8;">
+                <p><strong>【象义】</strong> <span id="resDesc">...</span></p>
+                <br>
+                <p><strong>【指引】</strong> <span id="resGuide">...</span></p>
+            </div>
+
+            <button class="close-btn" onclick="closeModal()">收 起</button>
+        </div>
+    </div>
+
+<script>
+    /* 注意：真正的核心代码已被压缩，以下是功能实现。
+       建议使用混淆工具处理下方代码以达到最佳隐藏效果。
+    */
+
+    /* --- 音效系统 --- */
+    class AudioEffects {
+        constructor() {
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.masterGain = this.audioContext.createGain();
+            this.masterGain.connect(this.audioContext.destination);
+            this.masterGain.gain.value = 0.3;
+        }
+
+        playCharge() {
+            if(this.audioContext.state === 'suspended') this.audioContext.resume();
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(400, this.audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.3);
+            osc.start(this.audioContext.currentTime);
+            osc.stop(this.audioContext.currentTime + 0.3);
+        }
+
+        playSpinTick() {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, this.audioContext.currentTime);
+            gain.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.15);
+            osc.start(this.audioContext.currentTime);
+            osc.stop(this.audioContext.currentTime + 0.15);
+        }
+
+        playResult() {
+            const notes = [523, 659, 784];
+            notes.forEach((freq, idx) => {
+                setTimeout(() => {
+                    const osc = this.audioContext.createOscillator();
+                    const gain = this.audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.25, this.audioContext.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+                    osc.start(this.audioContext.currentTime);
+                    osc.stop(this.audioContext.currentTime + 0.2);
+                }, idx * 100);
+            });
+        }
+
+        playClose() {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, this.audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, this.audioContext.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+            osc.start(this.audioContext.currentTime);
+            osc.stop(this.audioContext.currentTime + 0.2);
+        }
+    }
+
+    const audio = new AudioEffects();
+
+    /* --- 基础数据 --- */
+    const bagua = [
+        { name: '乾', icon: '☰', nature: '天', deg: 0, 
+          luck: '上上', title: '天行健', poem: '大鹏一日同风起，扶摇直上九万里。',
+          desc: '乾为天，刚健中正。万物化生，大吉之象。', 
+          guide: '时运正旺，当自强不息。适合开展新计划，或是担当领导职责。切忌骄傲。' },
+        { name: '兑', icon: '☱', nature: '泽', deg: 45, 
+          luck: '中上', title: '喜临门', poem: '时来运转喜气生，唯有巧言能坏事。',
+          desc: '兑为泽，喜悦沟通。利有攸往，顺势而为。', 
+          guide: '人际关系是关键。多与人交流可得助力，但需注意言多必失，保持谦逊。' },
+        { name: '离', icon: '☲', nature: '火', deg: 90, 
+          luck: '上吉', title: '日中天', poem: '光明普照事通明，前程锦绣正如意。',
+          desc: '离为火，光明依附。热情向上，显赫之象。', 
+          guide: '事业如日中天，需防冲动急躁。保持热情的同时，更要看清方向，依附正道。' },
+        { name: '震', icon: '☳', nature: '雷', deg: 135, 
+          luck: '中平', title: '雷惊蛰', poem: '雷惊百里动乾坤，时来运转正逢春。',
+          desc: '震为雷，临危不乱。发奋图强，变动之象。', 
+          guide: '局势变动较大，看似惊险，实则生机勃勃。不要害怕改变，主动出击更有利。' },
+        { name: '巽', icon: '☴', nature: '风', deg: 180, 
+          luck: '中吉', title: '顺风行', poem: '顺风顺水好行舟，利见大人解忧愁。',
+          desc: '巽为风，柔顺而入。无孔不入，利见大人。', 
+          guide: '宜采取柔和的策略，不要硬碰硬。顺应时势，寻找贵人相助是破局关键。' },
+        { name: '坎', icon: '☵', nature: '水', deg: 225, 
+          luck: '下签', title: '涉大川', poem: '水底捞月费心机，且守云开见月明。',
+          desc: '坎为水，艰难险阻。行险而顺，磨砺之象。', 
+          guide: '当前困难较多，不宜轻举妄动。如水般流转，避开锋芒，积蓄力量等待时机。' },
+        { name: '艮', icon: '☶', nature: '山', deg: 270, 
+          luck: '中下', title: '山重重', poem: '进退维谷且暂停，动静有时需修身。',
+          desc: '艮为山，动静有时。适可而止，稳重之象。', 
+          guide: '阻力较大，与其强行突破，不如停下来反思。以静制动，调整好状态再出发。' },
+        { name: '坤', icon: '☷', nature: '地', deg: 315, 
+          luck: '上吉', title: '地势坤', poem: '厚德载物运道深，柔顺且得贵人跟。',
+          desc: '坤为地，厚德载物。包容万物，顺势而为。', 
+          guide: '以退为进，包容一切。不需要争抢，只要像大地一样稳重，收获自然会来。' },
+        { 
+        name: '乾', icon: '☰', nature: '天', deg: 0, 
+        luck: '大吉', title: '天行健 · 万象更新', 
+        poem: '大鹏一日同风起，扶摇直上九万里。云开见日申乾象，指引前程达帝京。',
+        desc: '乾卦象征纯阳，刚健中正。意味着强大的行动力和领导力，是开创事业的黄金期。', 
+        details: {
+            career: '时运亨通，宜大刀阔斧，担任核心角色。',
+            love: '感情热烈主动，但需防刚愎自用，多听对方意见。',
+            wealth: '财源广进，适合长线投资，忌犹豫不决。',
+            health: '精力充沛，但需注意心血管及头部压力。'
+        },
+        guide: '时运正旺，当自强不息。适合开展新计划，或是担当领导职责。切忌骄傲，满招损，谦受益。' 
+        },
+        { 
+            name: '兑', icon: '☱', nature: '泽', deg: 45, 
+            luck: '中吉', title: '喜悦随 · 和合共生', 
+            poem: '时来运转喜气生，唯有巧言能坏事。二人同心金石开，口角无端莫多言。',
+            desc: '兑为泽，象征喜悦与沟通。利于人际交往，是一个资源整合、寻求共识的过程。', 
+            details: {
+                career: '利于谈判、销售与合作，团队氛围和谐。',
+                love: '甜蜜期，利于告白或化解矛盾，重在真诚沟通。',
+                wealth: '小财不断，常有惊喜之财，不宜孤注一掷。',
+                health: '注意呼吸系统与口腔健康。'
+            },
+            guide: '人际关系是关键。多与人交流可得助力，但需注意“言多必失”，保持谦逊，防止乐极生悲。' 
+        },
+        { 
+        name: '离', icon: '☲', nature: '火', deg: 90, 
+        luck: '上吉', title: '日中天 · 辉光普照', 
+        poem: '红日当天万国明，前程锦绣似云呈。求名求利皆如意，依附正道事竞成。',
+        desc: '离为火，象征光明、美丽与依附。如日中天，运势正处于高度显赫的时期。', 
+        details: {
+            career: '事业进入高光时刻，曝光度增加，适合展示成果或转型。',
+            love: '感情热烈如火，但需防虚荣心作祟，追求精神共鸣。',
+            wealth: '财运颇佳，利于文化、艺术或设计类投资，忌炫耀。',
+            health: '注意心火过旺、眼部疲劳及睡眠质量。'
+        },
+        guide: '光明虽好，但需寻找“正道”依附。此时不宜孤军奋战，寻找志同道合的平台是长久之计。' 
+        },
+        { 
+        name: '震', icon: '☳', nature: '雷', deg: 135, 
+        luck: '中平', title: '雷惊蛰 · 变动生机', 
+        poem: '一声霹雳震长空，万物复苏显英雄。莫道前路多阻碍，勇往直前运自通。',
+        desc: '震为雷，象征震动、奋起。虽有惊雷之状，实则是打破僵局、万物苏醒的征兆。', 
+        details: {
+            career: '局势出现突发变动，看似危机实则转机，宜快速响应。',
+            love: '关系中可能出现争吵或冲击，但这也是深度沟通的契机。',
+            wealth: '财运波动大，适合短线快进快出，忌犹豫错失良机。',
+            health: '注意肝火调理，警惕突发性的神经痛或足部受伤。'
+        },
+        guide: '面对变故要保持冷静，“震惊百里，不丧匕鬯”。主动拥抱变化，不要害怕暂时的混乱。' 
+        },
+        { 
+            name: '巽', icon: '☴', nature: '风', deg: 180, 
+            luck: '中吉', title: '顺风行 · 润物无声', 
+            poem: '随风潜入润心田，细微之处见真言。利见大人多助力，且将心事付流年。',
+            desc: '巽为风，象征柔顺、渗透。如风般无孔不入，强调通过温和、持续的力量达成目标。', 
+            details: {
+                career: '不宜大动作，适合通过社交、公关或细致策划逐步渗透。',
+                love: '感情细腻温婉，适合细水长流的相处，忌多疑猜忌。',
+                wealth: '利于贸易、咨询或小额多次的盈利，忌贪大求全。',
+                health: '注意呼吸道、气管及免疫系统的维护。'
+            },
+            guide: '顺应时势，不要硬碰硬。寻找能够提携自己的“贵人（大人）”，听取专业意见。' 
+        },
+        { 
+            name: '坎', icon: '☵', nature: '水', deg: 225, 
+            luck: '下签', title: '涉大川 · 磨砺心志', 
+            poem: '重重险陷水深沉，守正笃实贵在心。待到波平浪静处，方知苦海有浮沉。',
+            desc: '坎为水，象征艰难、险陷。水流汇聚于坎穴，虽处险境，但也是积蓄能量、磨练意志之时。', 
+            details: {
+                career: '正处低谷或瓶颈期，阻力巨大，宜守不宜攻，避免合同陷阱。',
+                love: '感情遭遇信任考验，可能存在隐瞒或波折，需真诚相对。',
+                wealth: '财运受阻，慎防欺诈，此时保本即是盈利，严禁赌博式投资。',
+                health: '注意肾脏、泌尿系统及精神压力导致的抑郁。'
+            },
+            guide: '保持内心的诚信与定力，“心亨，行有尚”。不要求快，像水一样避开锋芒，静待时机。' 
+        },
+        { 
+            name: '艮', icon: '☶', nature: '山', deg: 270, 
+            luck: '中下', title: '山重重 · 止欲修行', 
+            poem: '进退维谷且暂停，动静有时需修身。高山仰止前路远，反求诸己定乾坤。',
+            desc: '艮为山，象征静止、阻碍。意味着前路受阻，应当适可而止，转而向内寻求平静。', 
+            details: {
+                career: '计划遭遇停滞，可能是客观环境不成熟，适合复盘与技能充电。',
+                love: '对方态度转冷或关系进入冷淡期，给彼此空间是最好的选择。',
+                wealth: '财运胶着，资金周转减慢，忌盲目扩张，宜稳健储蓄。',
+                health: '注意脾胃不和、脊椎及关节部位的劳损。'
+            },
+            guide: '“时止则止，时行则行”。目前的“不动”是为了未来更稳健的“动”。不要强行冲关。' 
+        },
+        { 
+            name: '坤', icon: '☷', nature: '地', deg: 315, 
+            luck: '上吉', title: '地势坤 · 厚德载物', 
+            poem: '广阔平原百草丰，包容万物道其中。柔顺守正终有获，贵人自在那方逢。',
+            desc: '坤为地，象征顺从、包容。如大地般承载万物，这是一种以柔克刚、后发制人的大智慧。', 
+            details: {
+                career: '适合辅助性工作或团队协作，不宜强出头，顺应上级或大环境。',
+                love: '关系稳定包容，利于婚姻及长期发展，平淡之中见真情。',
+                wealth: '财运稳步增长，适合房地产、农业或基础民生类项目投资。',
+                health: '注意消化系统调理，避免思虑过多伤脾。'
+            },
+            guide: '“君子以厚德载物”。此时最好的策略是“随行”，多参考他人的成功经验，保持宽厚的处事态度。' 
+        }
+    ];
+
+    /* --- 初始化 --- */
+    const layer3 = document.getElementById('layer3');
+    const layer2 = document.getElementById('layer2');
+    
+    bagua.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'gua-cell';
+        div.style.transform = `rotate(${item.deg}deg)`;
+        div.innerHTML = `
+            <span class="gua-icon">${item.icon}</span>
+            <span class="gua-name">${item.name}</span>
+        `;
+        layer3.appendChild(div);
+    });
+
+    const stems = "甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥";
+    let stemsHtml = '';
+    for(let i=0; i<stems.length; i++) {
+        stemsHtml += `<span style="position:absolute; top:10px; left:50%; transform:translateX(-50%) rotate(${i * (360/22)}deg); transform-origin:center 220px; opacity:0.6;">${stems[i]}</span>`;
+    }
+    layer2.innerHTML = stemsHtml;
+
+    /* --- 交互逻辑 --- */
+    let rotation = 0;
+    let speed = 0;
+    let isHolding = false;
+    let rafId;
+    let friction = 0.98;
+    let maxSpeed = 40;
+    let lastTickDeg = 0;
+
+    const btn = document.getElementById('taijiBtn');
+    const input = document.getElementById('question');
+
+    // 增加事件兼容性
+    btn.addEventListener('mousedown', startHold);
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); startHold(e); }, {passive: false});
+    window.addEventListener('mouseup', endHold);
+    window.addEventListener('touchend', endHold);
+
+    function startHold(e) {
+        // 音频上下文可能需要用户交互才能启动
+        if(audio.audioContext.state === 'suspended') audio.audioContext.resume();
+
+        if(e.type === 'mousedown' || e.type === 'touchstart') {
+             if(document.getElementById('resultModal').classList.contains('active')) return;
+            
+            const q = input.value.trim();
+            if(!q) {
+                input.placeholder = "⚠️ 请先输入您的问题...";
+                input.focus();
+                return;
+            }
+
+            isHolding = true;
+            btn.classList.add('charging');
+            audio.playCharge();
+            loop();
+        }
+    }
+
+    function endHold() {
+        if(!isHolding) return;
+        isHolding = false;
+        btn.classList.remove('charging');
+        
+        if (speed < 10) speed = 20 + Math.random() * 10;
+    }
+
+    function loop() {
+        if (isHolding) {
+            if (speed < maxSpeed) speed += 0.5;
+        } else {
+            speed *= friction;
+        }
+
+        if (!isHolding && speed < 0.1) {
+            speed = 0;
+            cancelAnimationFrame(rafId);
+            showResult();
+            return;
+        }
+
+        rotation += speed;
+        
+        let currentDeg = rotation % 360;
+        if (Math.floor(lastTickDeg / 45) !== Math.floor(currentDeg / 45)) {
+            audio.playSpinTick();
+        }
+        lastTickDeg = currentDeg;
+        
+        layer3.style.transform = `rotate(${rotation}deg)`;
+        layer2.style.transform = `rotate(${-rotation * 0.5}deg)`;
+        document.getElementById('layer1').style.transform = `rotate(${rotation * 0.2}deg)`;
+        btn.style.transform = `rotate(${rotation * 2}deg)`;
+
+        highlightGua(rotation);
+        rafId = requestAnimationFrame(loop);
+    }
+
+    function highlightGua(currentRot) {
+        let pointerDeg = (360 - (currentRot % 360)) % 360;
+
+        const cells = document.querySelectorAll('.gua-cell');
+        cells.forEach(cell => cell.classList.remove('active'));
+
+        bagua.forEach((item, idx) => {
+            let diff = Math.abs(item.deg - pointerDeg);
+            if(diff > 180) diff = 360 - diff;
+            if(diff < 22.5) {
+                cells[idx].classList.add('active');
+            }
+        });
+    }
+
+    function showResult() {
+        let pointerDeg = (360 - (rotation % 360)) % 360;
+
+        const resultGua = bagua.reduce((prev, curr) => {
+            let diff = Math.abs(curr.deg - pointerDeg);
+            if(diff > 180) diff = 360 - diff;
+            return diff < 22.5 ? curr : prev;
+        }, bagua[0]);
+
+        document.getElementById('resSeal').innerText = resultGua.luck;
+        document.getElementById('resTitle').innerText = `【${resultGua.name}卦】${resultGua.title}`;
+        document.getElementById('resPoem').innerText = resultGua.poem;
+        document.getElementById('resDesc').innerText = resultGua.desc;
+        document.getElementById('resGuide').innerText = resultGua.guide;
+        
+        audio.playResult();
+        document.getElementById('resultModal').classList.add('active');
+    }
+
+    function closeModal() {
+        audio.playClose();
+        document.getElementById('resultModal').classList.remove('active');
+    }
+
+    /* --- 背景粒子 --- */
+    const canvas = document.getElementById('voidCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let width, height;
+    let particles = [];
+
+    function initCanvas() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        particles = [];
+        for(let i=0; i<60; i++) {
+            particles.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                size: Math.random() * 2,
+                speedY: Math.random() * 0.5 - 0.2,
+                alpha: Math.random(),
+                fadeDir: Math.random() > 0.5 ? 0.01 : -0.01
+            });
+        }
+    }
+
+    function drawParticles() {
+        ctx.clearRect(0, 0, width, height);
+        
+        const grad = ctx.createRadialGradient(width/2, height/2, 0, width/2, height/2, width);
+        grad.addColorStop(0, '#1a1a1a');
+        grad.addColorStop(1, '#050505');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,width,height);
+
+        ctx.fillStyle = '#d4af37';
+        
+        particles.forEach(p => {
+            p.y -= p.speedY;
+            p.alpha += p.fadeDir;
+            
+            if(p.alpha <= 0 || p.alpha >= 0.8) p.fadeDir *= -1;
+            if(p.y < 0) p.y = height;
+            if(p.y > height) p.y = 0;
+
+            ctx.globalAlpha = p.alpha;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+        
+        requestAnimationFrame(drawParticles);
+    }
+
+    window.addEventListener('resize', initCanvas);
+    initCanvas();
+    drawParticles();
+
+</script>
+</body>
+</html>
